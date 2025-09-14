@@ -6,67 +6,131 @@
 <link rel="stylesheet" href="../style.css">
 </head>
 <body>
-<h1>Welcome, Restaurant Owner</h1>
-<button onclick="logout()">Logout</button>
+  <script>
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || user.role !== "restaurant") {
+      alert("Access denied. Redirecting to login.");
+      window.location.href = "../login.html";
+    }
+  </script>
 
-<section>
-  <h2>Manage Menu</h2>
-  <input type="text" id="item_name" placeholder="Item Name">
-  <input type="number" id="item_price" placeholder="Price">
-  <button onclick="addMenuItem()">Add Item</button>
-  <ul id="menu_list"></ul>
-</section>
+  <div class="dashboard-header">
+    <h1>Welcome, ${user?.name || 'Restaurant Owner'}! 👨‍🍳</h1>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
 
-<section>
-  <h2>Incoming Orders</h2>
-  <ul id="order_list"></ul>
-</section>
+  <section>
+    <h2>🍽️ Manage Menu</h2>
+    <div class="form-grid">
+      <input type="text" id="item_name" placeholder="Item Name">
+      <input type="number" id="item_price" placeholder="Price" step="0.01">
+    </div>
+    <button class="btn-success" onclick="addMenuItem()">Add Menu Item</button>
+    <div id="menu_list"></div>
+  </section>
 
-<script>
-const user = JSON.parse(localStorage.getItem("user"));
-if (!user || user.role !== "restaurant") window.location.href="../login.html";
+  <section>
+    <h2>📋 Incoming Orders</h2>
+    <div id="order_list">
+      <p class="text-center">No orders yet.</p>
+    </div>
+  </section>
 
-const API_BASE = "http://localhost/food%20delivery%20system/backend/restaurant";
+  <script>
+    const API_BASE = "http://localhost/food%20delivery%20system/backend/restaurant";
 
-function logout() {
-  localStorage.removeItem("user");
-  window.location.href="../login.html";
-}
+    function logout() {
+      localStorage.removeItem("user");
+      window.location.href = "../login.html";
+    }
 
-// Load menu
-async function loadMenu() {
-  const res = await fetch(`${API_BASE}/get_menu.php?restaurant_id=${user.user_id}`);
-  const menu = await res.json();
-  const container = document.getElementById("menu_list");
-  container.innerHTML = menu.map(m => `<li>${m.name} - $${m.price}</li>`).join("");
-}
+    // Load menu
+    async function loadMenu() {
+      try {
+        const res = await fetch(`${API_BASE}/get_menu.php?restaurant_id=${user.user_id}`);
+        const menu = await res.json();
+        const container = document.getElementById("menu_list");
+        
+        if (menu.length === 0) {
+          container.innerHTML = '<p class="text-center">No menu items yet. Add your first item!</p>';
+          return;
+        }
+        
+        container.innerHTML = menu.map(m => 
+          `<div class="menu-item">
+             <div class="menu-item-info">
+               <h4>${m.name}</h4>
+             </div>
+             <div class="menu-item-price">$${m.price}</div>
+           </div>`
+        ).join("");
+      } catch (error) {
+        document.getElementById("menu_list").innerHTML = '<p class="text-center">Error loading menu.</p>';
+      }
+    }
 
-// Add menu item
-async function addMenuItem() {
-  const name = document.getElementById("item_name").value;
-  const price = document.getElementById("item_price").value;
-  const formData = new FormData();
-  formData.append("restaurant_id", user.user_id);
-  formData.append("name", name);
-  formData.append("price", price);
+    // Add menu item
+    async function addMenuItem() {
+      const name = document.getElementById("item_name").value.trim();
+      const price = document.getElementById("item_price").value.trim();
+      
+      if (!name || !price) {
+        alert("Please fill in both item name and price.");
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append("restaurant_id", user.user_id);
+      formData.append("name", name);
+      formData.append("price", price);
 
-  const res = await fetch(`${API_BASE}/add_menu_item.php`, {method:"POST", body:formData});
-  const data = await res.json();
-  alert(data.message);
-  loadMenu();
-}
+      try {
+        const res = await fetch(`${API_BASE}/add_menu_item.php`, {method:"POST", body:formData});
+        const data = await res.json();
+        alert(data.message);
+        
+        if (data.success) {
+          document.getElementById("item_name").value = "";
+          document.getElementById("item_price").value = "";
+          loadMenu();
+        }
+      } catch (error) {
+        alert("Error adding menu item. Please try again.");
+      }
+    }
 
-// Load orders
-async function loadOrders() {
-  const res = await fetch(`${API_BASE}/get_orders.php?restaurant_id=${user.user_id}`);
-  const orders = await res.json();
-  const container = document.getElementById("order_list");
-  container.innerHTML = orders.map(o => `<li>${o.customer_name} (${o.customer_email}) - ${o.status} - ${o.created_at}</li>`).join("");
-}
+    // Load orders
+    async function loadOrders() {
+      try {
+        const res = await fetch(`${API_BASE}/get_orders.php?restaurant_id=${user.user_id}`);
+        const orders = await res.json();
+        const container = document.getElementById("order_list");
+        
+        if (orders.length === 0) {
+          container.innerHTML = '<p class="text-center">No orders yet.</p>';
+          return;
+        }
+        
+        container.innerHTML = orders.map(o => 
+          `<div class="order-item">
+             <div class="flex justify-between align-center">
+               <div>
+                 <h4>${o.customer_name}</h4>
+                 <p>${o.customer_email}</p>
+                 <small>${o.created_at}</small>
+               </div>
+               <span class="order-status status-${o.status}">${o.status}</span>
+             </div>
+           </div>`
+        ).join("");
+      } catch (error) {
+        document.getElementById("order_list").innerHTML = '<p class="text-center">Error loading orders.</p>';
+      }
+    }
 
-// Initial load
-loadMenu();
-loadOrders();
-</script>
+    // Initial load
+    loadMenu();
+    loadOrders();
+  </script>
 </body>
 </html>

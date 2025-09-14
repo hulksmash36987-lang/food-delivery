@@ -10,54 +10,103 @@
     const user = JSON.parse(localStorage.getItem("user"));
     if (!user || user.role !== "customer") {
       alert("Access denied. Redirecting to login.");
-      window.location.href = "..login.html";
+      window.location.href = "../login.html";
     }
   </script>
 
-  <header>
-    <h1>Welcome, Customer!</h1>
-    <button onclick="logout()">Logout</button>
-  </header>
+  <div class="dashboard-header">
+    <h1>Welcome, ${user?.name || 'Customer'}! 👋</h1>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
 
   <section>
-  <h2>Browse Restaurants</h2>
-  <div id="restaurants"></div>
-</section>
+    <h2>🍽️ Browse Restaurants</h2>
+    <div id="restaurants">
+      <div class="loading" style="margin: 2rem auto;"></div>
+    </div>
+  </section>
 
-<section>
-  <h2>My Orders</h2>
-  <div id="orders"></div>
-</section>
+  <section>
+    <h2>📋 My Orders</h2>
+    <div id="orders">
+      <p class="text-center">No orders yet. Start by ordering from a restaurant!</p>
+    </div>
+  </section>
 
-<script>
-const API_BASE = "http://localhost/food%20delivery%20system/backend";
+  <script>
+    const API_BASE = "http://localhost/food%20delivery%20system/backend";
 
-async function loadRestaurants() {
-  const res = await fetch(`${API_BASE}/customer/get_restaurants.php`);
-  const data = await res.json();
-  const container = document.getElementById("restaurants");
-  container.innerHTML = data.map(r =>
-    `<div>
-       <h3>${r.name}</h3>
-       <button onclick="viewMenu(${r.id})">View Menu</button>
-     </div>`
-  ).join("");
-}
+    async function loadRestaurants() {
+      try {
+        const res = await fetch(`${API_BASE}/customer/get_restaurents.php`);
+        const data = await res.json();
+        const container = document.getElementById("restaurants");
+        
+        if (data.length === 0) {
+          container.innerHTML = '<p class="text-center">No restaurants available at the moment.</p>';
+          return;
+        }
+        
+        container.innerHTML = data.map(r =>
+          `<div class="restaurant-card">
+             <div class="restaurant-info">
+               <h3>${r.name}</h3>
+               <p>Delicious food awaits you!</p>
+             </div>
+             <button class="btn-secondary" onclick="viewMenu(${r.restaurant_id})">View Menu</button>
+           </div>`
+        ).join("");
+      } catch (error) {
+        document.getElementById("restaurants").innerHTML = '<p class="text-center">Error loading restaurants. Please try again.</p>';
+      }
+    }
 
-async function viewMenu(restaurantId) {
-  const res = await fetch(`${API_BASE}/customer/get_menu.php?restaurant_id=${restaurantId}`);
-  const menu = await res.json();
-  alert("Menu: " + menu.map(m => `${m.name} - $${m.price}`).join(", "));
-  // Later: show in proper UI with "Add to Cart"
-}
+    async function viewMenu(restaurantId) {
+      try {
+        const res = await fetch(`${API_BASE}/restaurant/get_menu.php?restaurant_id=${restaurantId}`);
+        const menu = await res.json();
+        
+        if (menu.length === 0) {
+          alert("No menu items available for this restaurant.");
+          return;
+        }
+        
+        const menuHtml = menu.map(m => 
+          `<div class="menu-item">
+             <div class="menu-item-info">
+               <h4>${m.name}</h4>
+             </div>
+             <div class="menu-item-price">$${m.price}</div>
+           </div>`
+        ).join("");
+        
+        // Create a simple modal-like display
+        const menuModal = document.createElement('div');
+        menuModal.style.cssText = `
+          position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+          background: rgba(0,0,0,0.5); display: flex; align-items: center; 
+          justify-content: center; z-index: 1000;
+        `;
+        menuModal.innerHTML = `
+          <div style="background: white; padding: 2rem; border-radius: 15px; max-width: 500px; width: 90%; max-height: 80%; overflow-y: auto;">
+            <h3 style="margin-bottom: 1rem;">Restaurant Menu</h3>
+            ${menuHtml}
+            <button onclick="this.parentElement.parentElement.remove()" style="margin-top: 1rem; width: 100%;">Close</button>
+          </div>
+        `;
+        document.body.appendChild(menuModal);
+      } catch (error) {
+        alert("Error loading menu. Please try again.");
+      }
+    }
 
-loadRestaurants();
+    function logout() {
+      localStorage.removeItem("user");
+      window.location.href = "../login.html";
+    }
 
-
-function logout() {
-  localStorage.removeItem("user");
-  window.location.href = "../login.html";
-}
+    // Initialize
+    loadRestaurants();
   </script>
 </body>
 </html>

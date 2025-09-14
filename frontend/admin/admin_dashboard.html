@@ -10,26 +10,36 @@
     const user = JSON.parse(localStorage.getItem("user"));
     if (!user || user.role !== "admin") {
       alert("Access denied. Redirecting to login.");
-      window.location.href = "..login.html";
+      window.location.href = "../login.html";
     }
   </script>
 
-  <header>
-    <h1>Welcome, Admin!</h1>
-    <button onclick="logout()">Logout</button>
-  </header>
-
-  <div class="container">
-    <h2>Manage Users & Restaurants</h2>
-    <p>This is where admin can manage all users, restaurants, and see analytics.</p>
+  <div class="dashboard-header">
+    <h1>Welcome, Admin! 👑</h1>
+    <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
+
+  <section>
+    <h2>📊 System Overview</h2>
+    <div class="card">
+      <h3>Total Users</h3>
+      <p>Manage all registered users in the system</p>
+    </div>
+    <div class="card">
+      <h3>Total Restaurants</h3>
+      <p>Monitor and manage restaurant accounts</p>
+    </div>
+    <div class="card">
+      <h3>System Analytics</h3>
+      <p>View detailed reports and statistics</p>
+    </div>
+  </section>
 
   <script>
     function logout() {
-  localStorage.removeItem("user");
-  window.location.href = "../login.html";
-}
-
+      localStorage.removeItem("user");
+      window.location.href = "../login.html";
+    }
   </script>
 </body>
 </html>
