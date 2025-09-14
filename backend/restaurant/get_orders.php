@@ -3,7 +3,7 @@ require_once("../db.php");
 
 $restaurant_id = $_GET['restaurant_id'] ?? 0;
 
-$sql = "SELECT o.order_id, o.status, u.name AS customer_name, u.email AS customer_email, o.created_at
+$sql = "SELECT o.order_id, o.status, o.total_amount, u.name AS customer_name, u.email AS customer_email, o.created_at
         FROM orders o
         JOIN users u ON o.customer_id = u.user_id
         WHERE o.restaurant_id = $restaurant_id

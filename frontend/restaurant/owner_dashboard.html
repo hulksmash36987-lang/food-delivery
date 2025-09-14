@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Restaurant Dashboard</title>
-<link rel="stylesheet" href="../style.css">
+  <meta charset="UTF-8">
+  <title>Restaurant Dashboard</title>
+  <link rel="stylesheet" href="../style.css">
 </head>
 <body>
   <script>
@@ -15,7 +15,7 @@
   </script>
 
   <div class="dashboard-header">
-    <h1>Welcome, ${user?.name || 'Restaurant Owner'}! 👨‍🍳</h1>
+    <h1>Welcome, <span id="userName"></span>! 👨‍🍳</h1>
     <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
 
@@ -25,6 +25,8 @@
       <input type="text" id="item_name" placeholder="Item Name">
       <input type="number" id="item_price" placeholder="Price" step="0.01">
     </div>
+    <textarea id="item_description" placeholder="Description (optional)"></textarea>
+    <input type="text" id="item_category" placeholder="Category (e.g., Pizza, Burger)">
     <button class="btn-success" onclick="addMenuItem()">Add Menu Item</button>
     <div id="menu_list"></div>
   </section>
@@ -32,19 +34,21 @@
   <section>
     <h2>📋 Incoming Orders</h2>
     <div id="order_list">
-      <p class="text-center">No orders yet.</p>
+      <p class="text-center">Loading orders...</p>
     </div>
   </section>
 
   <script>
     const API_BASE = "http://localhost/food%20delivery%20system/backend/restaurant";
 
-    function logout() {
-      localStorage.removeItem("user");
-      window.location.href = "../login.html";
-    }
+    // Initialize
+    document.getElementById('userName').textContent = user.name;
+    loadMenu();
+    loadOrders();
+    
+    // Refresh orders every 30 seconds
+    setInterval(loadOrders, 30000);
 
-    // Load menu
     async function loadMenu() {
       try {
         const res = await fetch(`${API_BASE}/get_menu.php?restaurant_id=${user.user_id}`);
@@ -60,6 +64,8 @@
           `<div class="menu-item">
              <div class="menu-item-info">
                <h4>${m.name}</h4>
+               <p>${m.description || ''}</p>
+               <small>Category: ${m.category || 'Uncategorized'}</small>
              </div>
              <div class="menu-item-price">$${m.price}</div>
            </div>`
@@ -69,13 +75,14 @@
       }
     }
 
-    // Add menu item
     async function addMenuItem() {
       const name = document.getElementById("item_name").value.trim();
       const price = document.getElementById("item_price").value.trim();
+      const description = document.getElementById("item_description").value.trim();
+      const category = document.getElementById("item_category").value.trim();
       
       if (!name || !price) {
-        alert("Please fill in both item name and price.");
+        alert("Please fill in item name and price.");
         return;
       }
       
@@ -83,23 +90,28 @@
       formData.append("restaurant_id", user.user_id);
       formData.append("name", name);
       formData.append("price", price);
+      formData.append("description", description);
+      formData.append("category", category);
 
       try {
         const res = await fetch(`${API_BASE}/add_menu_item.php`, {method:"POST", body:formData});
         const data = await res.json();
-        alert(data.message);
         
         if (data.success) {
           document.getElementById("item_name").value = "";
           document.getElementById("item_price").value = "";
+          document.getElementById("item_description").value = "";
+          document.getElementById("item_category").value = "";
           loadMenu();
+          showNotification("Menu item added successfully!");
+        } else {
+          alert(data.message);
         }
       } catch (error) {
-        alert("Error adding menu item. Please try again.");
+        alert("Error adding menu item.");
       }
     }
 
-    // Load orders
     async function loadOrders() {
       try {
         const res = await fetch(`${API_BASE}/get_orders.php?restaurant_id=${user.user_id}`);
@@ -113,13 +125,16 @@
         
         container.innerHTML = orders.map(o => 
           `<div class="order-item">
-             <div class="flex justify-between align-center">
-               <div>
-                 <h4>${o.customer_name}</h4>
-                 <p>${o.customer_email}</p>
-                 <small>${o.created_at}</small>
+             <div class="order-header">
+               <div class="order-info">
+                 <h4>Order #${o.order_id}</h4>
+                 <p>${o.customer_name} - ${o.customer_email}</p>
+                 <small>${new Date(o.created_at).toLocaleDateString()}</small>
                </div>
                <span class="order-status status-${o.status}">${o.status}</span>
+             </div>
+             <div class="order-actions">
+               ${getStatusButtons(o.order_id, o.status)}
              </div>
            </div>`
         ).join("");
@@ -128,9 +143,73 @@
       }
     }
 
-    // Initial load
-    loadMenu();
-    loadOrders();
+    function getStatusButtons(orderId, currentStatus) {
+      const statusFlow = {
+        'pending': 'confirmed',
+        'confirmed': 'preparing',
+        'preparing': 'out_for_delivery',
+        'out_for_delivery': 'delivered'
+      };
+      
+      if (currentStatus === 'delivered' || currentStatus === 'cancelled') {
+        return '<span class="status-final">Order Complete</span>';
+      }
+      
+      const nextStatus = statusFlow[currentStatus];
+      if (!nextStatus) return '';
+      
+      return `
+        <button onclick="updateOrderStatus(${orderId}, '${nextStatus}')" class="status-btn">
+          Mark as ${nextStatus.replace('_', ' ')}
+        </button>
+        <button onclick="updateOrderStatus(${orderId}, 'cancelled')" class="cancel-btn">
+          Cancel Order
+        </button>
+      `;
+    }
+
+    async function updateOrderStatus(orderId, status) {
+      const formData = new FormData();
+      formData.append('order_id', orderId);
+      formData.append('status', status);
+
+      try {
+        const res = await fetch(`${API_BASE}/update_order_status.php`, {
+          method: 'POST',
+          body: formData
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+          loadOrders();
+          showNotification(`Order status updated to ${status.replace('_', ' ')}!`);
+        } else {
+          alert(result.message);
+        }
+      } catch (error) {
+        alert("Error updating order status.");
+      }
+    }
+
+    function showNotification(message) {
+      const notification = document.createElement('div');
+      notification.className = 'notification';
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.classList.add('show');
+      }, 100);
+      
+      setTimeout(() => {
+        notification.remove();
+      }, 3000);
+    }
+
+    function logout() {
+      localStorage.removeItem("user");
+      window.location.href = "../login.html";
+    }
   </script>
 </body>
 </html>
