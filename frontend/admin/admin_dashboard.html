@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <script>
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || user.role !== "admin") {
+      alert("Access denied. Redirecting to login.");
+      window.location.href = "..login.html";
+    }
+  </script>
+
+  <header>
+    <h1>Welcome, Admin!</h1>
+    <button onclick="logout()">Logout</button>
+  </header>
+
+  <div class="container">
+    <h2>Manage Users & Restaurants</h2>
+    <p>This is where admin can manage all users, restaurants, and see analytics.</p>
+  </div>
+
+  <script>
+    function logout() {
+  localStorage.removeItem("user");
+  window.location.href = "../login.html";
+}
+
+  </script>
+</body>
+</html>

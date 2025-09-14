@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Customer Dashboard</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <script>
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || user.role !== "customer") {
+      alert("Access denied. Redirecting to login.");
+      window.location.href = "..login.html";
+    }
+  </script>
+
+  <header>
+    <h1>Welcome, Customer!</h1>
+    <button onclick="logout()">Logout</button>
+  </header>
+
+  <section>
+  <h2>Browse Restaurants</h2>
+  <div id="restaurants"></div>
+</section>
+
+<section>
+  <h2>My Orders</h2>
+  <div id="orders"></div>
+</section>
+
+<script>
+const API_BASE = "http://localhost/food%20delivery%20system/backend";
+
+async function loadRestaurants() {
+  const res = await fetch(`${API_BASE}/customer/get_restaurants.php`);
+  const data = await res.json();
+  const container = document.getElementById("restaurants");
+  container.innerHTML = data.map(r =>
+    `<div>
+       <h3>${r.name}</h3>
+       <button onclick="viewMenu(${r.id})">View Menu</button>
+     </div>`
+  ).join("");
+}
+
+async function viewMenu(restaurantId) {
+  const res = await fetch(`${API_BASE}/customer/get_menu.php?restaurant_id=${restaurantId}`);
+  const menu = await res.json();
+  alert("Menu: " + menu.map(m => `${m.name} - $${m.price}`).join(", "));
+  // Later: show in proper UI with "Add to Cart"
+}
+
+loadRestaurants();
+
+
+function logout() {
+  localStorage.removeItem("user");
+  window.location.href = "../login.html";
+}
+  </script>
+</body>
+</html>
